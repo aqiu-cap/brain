@@ -1,4 +1,4 @@
-import json
+﻿import json
 import re
 from typing import Dict, List, Any, Tuple
 
@@ -108,14 +108,6 @@ class ItemNameVector:
         # }
         embedding_result = generate_vector_data(bgem3_client,item_names)
 
-        """
-            ["商品名1", "商品名2"]
-            
-            {
-                "dense": [[商品名1密集向量数据], [商品名2密集向量数据]]
-                "sparse":[{商品名1稀疏向量数据} ,{商品名2稀疏向量数据}] 
-            }
-        """
         # 遍历item_names:List[str]
         for index,item_name in enumerate(item_names):
             # 根据遍历index索引，从 embedding_result把每个商品名对应密集和稀疏向量数据获取
@@ -137,19 +129,7 @@ class ItemNameVector:
             )
 
             # 混合查询结果重新组装，从结果获取item_name 和 分数
-            """
-                data: [
-                            [
-                                {
-                                    'pk': '467259340667782119',
-                                    'distance': 0.7221629619598389,
-                                    'entity': {
-                                        'item_name': 'H3C LA2608 室内无线网关'
-                                    }
-                                }
-                            ]
-                        ]
-                """
+
             item_name_score_result = {
                 "extracted_name":item_name,
                 "matches":[
@@ -170,28 +150,7 @@ class ItemNameVector:
     # # 最终返回两个列表 confirmed  options
     def item_name_score(self,
                 search_result:List[Dict[str,Any]])->Tuple[List[str],List[str]]:
-        """
-        [
-         {
-            'extracted_name': 'H3C LA2608',
-            'matches': [
-            {
-                'item_name': 'H3C LA2608 室内无线网关',
-                'score': 0.7221629619598389
-            }
-            ]
-         },
-         {
-            'extracted_name': 'H3C LA2608',
-            'matches': [
-            {
-                'item_name': 'H3C LA2608 室内无线网关',
-                'score': 0.7221629619598389
-            }
-            ]
-         }
-        ]
-        """
+
         # 创建两个列表
         confirmed = [] # 分数大于等于0.7
         options = []   # 分数在0.6 - 0.7之间
@@ -256,11 +215,7 @@ class ItemNameConfirmNode(BaseNode):
                                   original_query, chat_history)
 
         # 返回格式字典格式
-        # {
-        #     "item_names": ["商品A", "商品B"],
-        #     "rewritten_query": "关于商品A和商品B，..."
-        # }
-        # item_names多个商品名列表
+
         item_names = llm_result.get("item_names")
         # 重写之后用户的问题
         rewritten_query = llm_result.get("rewritten_query")
@@ -295,16 +250,7 @@ class ItemNameConfirmNode(BaseNode):
         elif options:
             state["answer"] = f"请选择问题：{','.join(options)}"
         else:
-            state["answer"] = "当前问题无法识别...."
-
-
-# if __name__ == "__main__":
-#     state: QueryGraphState = {
-#         "original_query": "我想知道H3C LA2608如何使用？"
-#         # "original_query": "我的手机如何使用?"
-#     }
-#
-#     node = ItemNameConfirmNode()
-#     res = node.process(state)
-#
-#     print(res)
+            # 未匹配到本地商品名 → 不阻断流程，让后续搜索节点处理
+            # 联网搜索可以回答通用问题（天气、新闻等）
+            state["rewritten_query"] = rewritten_query
+            state["item_names"] = []

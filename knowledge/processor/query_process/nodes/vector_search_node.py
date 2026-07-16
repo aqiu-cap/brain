@@ -1,4 +1,4 @@
-from typing import List
+﻿from typing import List
 
 from knowledge.processor.query_process.base import BaseNode
 from knowledge.processor.query_process.state import QueryGraphState
@@ -11,6 +11,10 @@ class VectorSearchNode(BaseNode):
     def process(self,state:QueryGraphState)->QueryGraphState:
         # 1 从上一步节点state获取重写问题 和 item_name
         item_names,rewritten_query = self.validate_data(state)
+        if not item_names:
+            # item_names 为空，向量搜索无意义，返回空结果
+            return {"embedding_chunks": []}
+
 
         # 2 对rewritten_query重写问题生成两个向量
         # 获取bgem3模型对象
@@ -21,7 +25,7 @@ class VectorSearchNode(BaseNode):
         embedding_result = (
             generate_vector_data(bgem3_client,[rewritten_query]))
         if not embedding_result:
-            return state
+            return {"embedding_chunks": []}
 
         # 3 对item_names标量字段构建过滤条件
         # item_name in ["商品名1" , "商品名2"]
@@ -45,7 +49,7 @@ class VectorSearchNode(BaseNode):
 
         # 6 返回结果，处理，更新到state，返回state
         if not res or not res[0]:
-            return state
+            return {"embedding_chunks": []}
         # 更新到state
         # state["embedding_chunks"] = res[0]
         # return state
@@ -53,10 +57,7 @@ class VectorSearchNode(BaseNode):
 
 
     # 3 对item_names标量字段构建过滤条件
-    ##item_names  ["商品名1" , "商品名2"]
-    # item_name in ["商品名1" , "商品名2"]
     def create_itemname_filter(self,item_names:List[str])->str:
-        #  商品名1 , 商品名2  => "商品名1", "商品名2"
         item_name_filter = ", ".join(f'"{name}"' for name in item_names)
         return f" item_name in [{item_name_filter}]"
 
@@ -64,7 +65,8 @@ class VectorSearchNode(BaseNode):
     def validate_data(self,state:QueryGraphState):
         item_names = state.get("item_names")
         if not item_names:
-            raise Exception(f"Item names field is empty")
+            # item_names 为空时返回空结果，不阻断流程（联网搜索可以处理）
+            return [], state.get("rewritten_query")
 
         rewritten_query = state.get("rewritten_query")
         if not rewritten_query:
@@ -72,11 +74,3 @@ class VectorSearchNode(BaseNode):
 
         return item_names,rewritten_query
 
-# if __name__ == "__main__":
-#     state = {
-#         "rewritten_query":"关于H3C LA2608，如何使用？",
-#         "item_names":["H3C LA2608 室内无线网关"],
-#     }
-#     node = VectorSearchNode()
-#     res = node.process(state)
-#     print(res)

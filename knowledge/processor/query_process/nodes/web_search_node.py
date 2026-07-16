@@ -1,6 +1,7 @@
-import asyncio
+﻿import asyncio
 import json
 from typing import Dict, Any
+import concurrent.futures
 
 from agents.mcp import MCPServerStreamableHttp
 
@@ -10,8 +11,21 @@ from knowledge.processor.query_process.state import QueryGraphState
 # web搜索节点
 class WebSearchNode(BaseNode):
     def process(self,state:QueryGraphState)->QueryGraphState:
-        # 异步调用
-        return asyncio.run(self._async_process(state))
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop is None:
+            # 没有运行中的事件循环 → 直接新建一个
+            return asyncio.run(self._async_process(state))
+        else:
+            # 已有运行中的事件循环（FastAPI async handler 场景）
+            # → 开独立线程执行，避免阻塞主事件循环
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                return pool.submit(
+                    asyncio.run, self._async_process(state)
+                ).result()
 
     # 异步方法开始调用过程
     async def _async_process(self,state:QueryGraphState)->QueryGraphState:
@@ -23,9 +37,9 @@ class WebSearchNode(BaseNode):
         # 调用异步方法 mcp工具调用
         mcp_result = await self.execute_mcp_search(rewritten_query)
         if not mcp_result:
-            return state
+            return {"web_search_docs": []}
         return {"web_search_docs": mcp_result}
-
+    # 异步方法 mcp工具调用
     # 异步方法 mcp工具调用
     async def execute_mcp_search(self,rewritten_query:str):
         # streamablehttp和服务端建立连接

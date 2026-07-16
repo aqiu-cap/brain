@@ -1,4 +1,4 @@
-from typing import List
+﻿from typing import List
 
 from langchain_core.messages import SystemMessage, HumanMessage
 
@@ -20,7 +20,9 @@ class HydeSearchNode(BaseNode):
             raise Exception(f"HydeSearchNode: No rewritten query found")
         item_names = state.get("item_names")
         if not item_names:
-            raise Exception(f"HydeSearchNode: No item_names query found")
+            # item_names 为空时返回空结果，不阻断流程（联网搜索可以处理）
+            return {"hyde_embedding_chunks": []}
+
 
         # 2 根据用户问题 + item_name构建提示词，调用LLM得到假设性答案
         hyde_document = (
@@ -34,10 +36,7 @@ class HydeSearchNode(BaseNode):
 
         # 4 把用户问题 + llm返回假设性答案拼接字符串 生成两个向量
         bgem3_client = get_bgem3_client()
-        # {  # [[111],[333]] => [111]     [333]
-        #     "dense": [dense.tolist() for dense in embedding_result['dense']],
-        #     "sparse": final_sparse_vector,
-        # }
+
         vector_result = (
             generate_vector_data(bgem3_client, [embedding_document]))
 
@@ -61,7 +60,7 @@ class HydeSearchNode(BaseNode):
             output_fields=["chunk_id","content","item_name"]
         )
         if not res:
-            return state
+            return {"hyde_embedding_chunks": []}
         return {"hyde_embedding_chunks":res[0]}
 
     # 2 根据用户问题 + item_name构建提示词，调用LLM得到假设性答案
@@ -95,11 +94,3 @@ class HydeSearchNode(BaseNode):
         # item_name in ["商品名1","商品名2"]
         return f" item_name in [{item_names_expr}]"
 
-# if __name__ == "__main__":
-#     state = {
-#         "rewritten_query":"关于H3C LA2608，如何使用？",
-#         "item_names":["H3C LA2608 室内无线网关"],
-#     }
-#     node = HydeSearchNode()
-#     res = node.process(state)
-#     print(res)

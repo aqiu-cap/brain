@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
@@ -14,7 +14,7 @@
       --brand2:#818cf8;
       --bubble-user:linear-gradient(135deg, #38bdf8, #818cf8);
       --bubble-bot:rgba(15, 23, 42, 0.6);
-      --border:rgba(255, 255, 255, 0.1);
+      --border:rgba(255, 255, 255, 0.06);
       --shadow:0 25px 50px -12px rgba(0, 0, 0, 0.5);
     }
     *{box-sizing:border-box}
@@ -22,11 +22,10 @@
       margin:0;
       font-family: "Segoe UI", "Microsoft YaHei", system-ui, -apple-system, Arial, sans-serif;
       background-color: #0f172a;
-      background-image: radial-gradient(circle at 15% 50%, rgba(56, 189, 248, 0.08) 0%, transparent 50%),
-                        radial-gradient(circle at 85% 30%, rgba(129, 140, 248, 0.08) 0%, transparent 50%),
-                        linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-                        linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-      background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+      background:
+        radial-gradient(ellipse at 30% -20%, rgba(56, 189, 248, 0.05) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 120%, rgba(129, 140, 248, 0.05) 0%, transparent 50%),
+        linear-gradient(180deg, #080c1a 0%, #0f172a 50%, #0d1428 100%);
       color:var(--text);
       height:100vh;
       display:flex;
@@ -38,12 +37,12 @@
       width:100%;
       max-width:980px;
       height:min(820px, 92vh);
-      background:var(--panel);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border:1px solid var(--border);
+      background:rgba(30, 41, 59, 0.65);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border:1px solid rgba(255,255,255,0.06);
       border-radius:16px;
-      box-shadow:var(--shadow);
+      box-shadow:0 25px 50px -12px rgba(0,0,0,0.5), inset 0 0 1px rgba(255,255,255,0.05);
       overflow:hidden;
       display:flex;
       flex-direction:column;
@@ -53,8 +52,8 @@
       align-items:center;
       gap:12px;
       padding:14px 18px;
-      border-bottom:1px solid var(--border);
-      background:rgba(15, 23, 42, 0.5);
+      border-bottom:1px solid rgba(255,255,255,0.06);
+      background:rgba(15, 23, 42, 0.35);
     }
     .brand{
       display:flex;
@@ -65,7 +64,7 @@
     .logo{
       width:36px;height:36px;border-radius:10px;
       background:linear-gradient(135deg, var(--brand), var(--brand2));
-      box-shadow:0 0 20px rgba(56, 189, 248, 0.4);
+      box-shadow:0 0 12px rgba(56, 189, 248, 0.2);
     }
     .title{
       display:flex;
@@ -83,10 +82,10 @@
     .pill{
       font-size:12px;
       color:var(--muted);
-      border:1px solid var(--border);
+      border:1px solid rgba(255,255,255,0.08);
       padding:6px 10px;
       border-radius:999px;
-      background:rgba(15, 23, 42, 0.6);
+      background:rgba(15, 23, 42, 0.5);
     }
     .btn{
       border:none;
@@ -267,9 +266,73 @@
       background:rgba(15, 23, 42, 0.6);
       color:#94a3b8;
     }
+    #bgCanvas{
+      position:fixed;
+      top:0;
+      left:0;
+      width:100vw;
+      height:100vh;
+      z-index:0;
+      pointer-events:none;
+      opacity:0.9;
+    }
+    .app{
+      position:relative;
+      z-index:1;
+    }
   </style>
 </head>
 <body>
+  <canvas id="bgCanvas"></canvas>
+  <script>
+    (function(){
+      const c=document.getElementById("bgCanvas"),x=c.getContext("2d");
+      let W,H,mx=-999,my=-999,pt=[];
+      function resize(){W=c.width=window.innerWidth;H=c.height=window.innerHeight}
+      resize();window.addEventListener("resize",resize);
+      document.addEventListener("mousemove",function(e){mx=e.clientX;my=e.clientY});
+      document.addEventListener("mouseleave",function(){mx=-999;my=-999});
+      const pal=[[56,189,248],[129,140,248],[244,114,182],[34,211,238],[251,191,36],[232,121,249],[52,211,153]];
+      for(let i=0;i<100;i++){let a=Math.random()*7;pt.push({x:Math.random()*W,y:Math.random()*H,vx:Math.cos(a)*(0.2+Math.random()*0.5),vy:Math.sin(a)*(0.2+Math.random()*0.5),c:pal[Math.floor(Math.random()*pal.length)],s:2+Math.random()*3,p:Math.random()*7})}
+      function dr(t){
+        x.clearRect(0,0,W,H);const tm=t*0.001;
+        for(let p of pt){
+          p.vx+=Math.sin(tm*0.5+p.p)*0.002;p.vy+=Math.cos(tm*0.7+p.p)*0.002;
+          if(mx>0&&my>0){let dx=mx-p.x,dy=my-p.y,d=Math.hypot(dx,dy);if(d<200){let f=(1-d/200)*0.02;p.vx+=dx*f/d;p.vy+=dy*f/d}}
+          p.vx*=0.99;p.vy*=0.99;p.x+=p.vx;p.y+=p.vy;
+          if(p.x<-20)p.x=W+20;if(p.x>W+20)p.x=-20;if(p.y<-20)p.y=H+20;if(p.y>H+20)p.y=-20
+        }
+        for(let i=0;i<pt.length;i++){
+          for(let j=i+1;j<pt.length;j++){
+            let dx=pt[i].x-pt[j].x,dy=pt[i].y-pt[j].y,d=Math.hypot(dx,dy);
+            if(d<120){let a=(1-d/120)*0.25;let c1=pt[i].c,c2=pt[j].c;
+              x.beginPath();x.moveTo(pt[i].x,pt[i].y);x.lineTo(pt[j].x,pt[j].y);
+              x.strokeStyle="rgba("+((c1[0]+c2[0])/2)+","+((c1[1]+c2[1])/2)+","+((c1[2]+c2[2])/2)+","+a+")";
+              x.lineWidth=0.5;x.stroke()}
+          }
+        }
+        for(let p of pt){
+          let g=x.createRadialGradient(p.x,p.y,0,p.x,p.y,p.s*4);
+          g.addColorStop(0,"rgba("+p.c.join(",")+",0.35)");
+          g.addColorStop(1,"rgba("+p.c.join(",")+",0)");
+          x.fillStyle=g;x.beginPath();x.arc(p.x,p.y,p.s*4,0,7);x.fill();
+          x.fillStyle="rgba("+p.c.join(",")+",0.85)";x.shadowBlur=12;
+          x.shadowColor="rgba("+p.c.join(",")+",0.5)";
+          x.beginPath();x.arc(p.x,p.y,p.s,0,7);x.fill();x.shadowBlur=0
+        }
+        if(mx>0&&my>0){
+          let cols=[[56,189,248],[129,140,248],[244,114,182],[34,211,238]];
+          let ci=Math.floor(tm*0.2)%cols.length,c=cols[ci];
+          let g=x.createRadialGradient(mx,my,0,mx,my,100);
+          g.addColorStop(0,"rgba("+c.join(",")+",0.12)");
+          g.addColorStop(1,"rgba(0,0,0,0)");
+          x.fillStyle=g;x.beginPath();x.arc(mx,my,100,0,7);x.fill()
+        }
+        requestAnimationFrame(dr)
+      }
+      requestAnimationFrame(dr)
+    })();
+  </script>
   <div class="app">
     <div class="topbar">
       <div class="brand">
@@ -293,7 +356,7 @@
         <div class="avatar bot">问器</div>
         <div>
           <div class="bubble">你好，我是问器知识库客服。你可以直接提问，我会在“阶段进度”里展示处理过程。</div>
-          <div class="meta">提示：可以问“如何使用万用表测量电压？”</div>
+          <div class="meta">提示：可以问“今天合肥天气如何”</div>
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-"""查询流程节点基类
+﻿"""查询流程节点基类
 
 定义统一的节点接口规范，提供通用功能。
 """
@@ -9,6 +9,7 @@ import logging
 
 from knowledge.processor.query_process.config import QueryConfig, get_config
 from knowledge.processor.query_process.exceptions import QueryProcessError
+from knowledge.utils.sse_util import push_sse_event
 
 T = TypeVar("T")  # 泛型状态类型
 
@@ -63,12 +64,34 @@ class BaseNode(ABC):
         Raises:
             QueryProcessError: 节点执行失败时抛出。
         """
+
         try:
             self.logger.info(f"--- {self.name} 开始 ---")
-
+            task_id = state.get("task_id") if isinstance(state, dict) else None
+            is_stream = state.get("is_stream") if isinstance(state, dict) else False
+            node_class = type(self).__name__
+            if task_id:
+                from knowledge.front.utils.task_util import add_running_task
+                add_running_task(task_id, node_class)
+                if is_stream:
+                    from knowledge.front.utils.task_util import get_running_task_list, get_done_task_list
+                    push_sse_event(task_id, "progress", {
+                        "done_list": get_done_task_list(task_id),
+                        "running_list": get_running_task_list(task_id),
+                        "status": "processing"
+                    })
             result = self.process(state)
             self.logger.info(f"--- {self.name} 完成 ---")
-
+            if task_id:
+                from knowledge.front.utils.task_util import add_done_task
+                add_done_task(task_id, node_class)
+                if is_stream:
+                    from knowledge.front.utils.task_util import get_running_task_list, get_done_task_list
+                    push_sse_event(task_id, "progress", {
+                        "done_list": get_done_task_list(task_id),
+                        "running_list": get_running_task_list(task_id),
+                        "status": "processing"
+                    })
             return result
         except Exception as e:
             self.logger.error(f"{self.name} 执行失败: {e}")
