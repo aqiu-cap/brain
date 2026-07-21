@@ -6,7 +6,7 @@
 Python 3.10+
 框架 ：FastAPI + LangGraph
 向量数据库 ：Milvus 2.4+
-文档数据库 ：MongoDB
+文档数据库 ：MongoDB  \n
 对象存储 ；MinIO
 嵌入模型 ：BGE-M3
 重排序模型 ：BGE Reranker
